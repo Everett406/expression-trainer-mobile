@@ -68,6 +68,7 @@ git push origin v1.0.0
 
 ## 版本历史
 
+- v1.1.2 - 修复 APK 签名问题（signingConfig 未注入到 release buildType）
 - v1.1.1 - 修复 Java 版本要求（17→21）适配 Capacitor 7，升级 Android SDK 至 35
 - v1.1.0 - 使用自定义 Capacitor WebSocket 插件（OkHttp）替代 capacitor-cors-proxy
 - v1.0.5 - 修复 capacitor-cors-proxy 依赖版本不匹配问题

@@ -145,30 +145,17 @@ fi
 echo ""
 echo "[4/4] 配置签名 ..."
 
-# 检查是否已经存在签名配置块（注意：signingConfig signingConfigs.debug 不是块定义）
-if grep -qE "signingConfigs\s*\{" "$GRADLE_FILE"; then
-    echo "  签名配置已存在，跳过"
-elif [ -z "$KEYSTORE_PASSWORD" ]; then
+if [ -z "$KEYSTORE_PASSWORD" ]; then
     echo "  未设置 KEYSTORE_PASSWORD 环境变量，跳过签名配置"
     echo "  （本地开发可忽略，GitHub Actions 会自动注入）"
 else
-    echo "  添加签名配置到 build.gradle ..."
-
-    # 在 buildTypes 之前插入 signingConfigs 块
-    # 使用环境变量注入密钥信息
-    sed -i "/buildTypes {/i\\
-        signingConfigs {\\
-            release {\\
-                storeFile file(\"release.keystore\")\\
-                storePassword \"${KEYSTORE_PASSWORD}\"\\
-                keyAlias \"${KEY_ALIAS}\"\\
-                keyPassword \"${KEY_PASSWORD}\"\\
-            }\\
-        }" "$GRADLE_FILE"
-
-    # 将 release buildType 的签名配置从 debug 改为 release
-    sed -i 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' "$GRADLE_FILE"
-    echo "  已添加签名配置"
+    echo "  使用 Python 脚本配置签名 ..."
+    python3 "$SCRIPT_DIR/configure-signing.py" \
+        "$GRADLE_FILE" \
+        "$KEYSTORE_PASSWORD" \
+        "$KEY_ALIAS" \
+        "$KEY_PASSWORD"
+    echo "  签名配置完成"
 fi
 
 # ============================================================
