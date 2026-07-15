@@ -66,6 +66,7 @@ git push origin v1.0.0
 
 ## 版本历史
 
+- v1.0.5 - 修复 capacitor-cors-proxy 依赖版本不匹配问题
 - v1.0.4 - 修复 Gradle 签名配置注入方式
 - v1.0.3 - 修复 capacitor 配置（改为 JSON 格式避免 TypeScript 依赖）
 - v1.0.2 - 升级到 Capacitor 7 适配 capacitor-cors-proxy

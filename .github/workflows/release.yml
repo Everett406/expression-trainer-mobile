@@ -51,6 +51,18 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Fix capacitor-cors-proxy dependency version
+        run: |
+          # capacitor-cors-proxy references capacitor-android:7.2.0 which doesn't exist on Maven
+          # Find the actual installed version and patch it
+          CAP_VERSION=$(node -p "require('./node_modules/@capacitor/android/package.json').version")
+          echo "Installed @capacitor/android version: $CAP_VERSION"
+          find node_modules/capacitor-cors-proxy -name "build.gradle" -exec sed -i "s/com.capacitorjs:capacitor-android:[0-9.]*\$/com.capacitorjs:capacitor-android:$CAP_VERSION/" {} \;
+          # Also patch the copied version in android project
+          find android -name "build.gradle" -path "*capacitor-cors-proxy*" -exec sed -i "s/com.capacitorjs:capacitor-android:[0-9.]*\$/com.capacitorjs:capacitor-android:$CAP_VERSION/" {} \; || true
+          # Re-sync to pick up the fix
+          npx cap sync android
+
       - name: Decode signing keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
