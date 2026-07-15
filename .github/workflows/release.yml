@@ -34,7 +34,7 @@ jobs:
           packages: 'platform-tools build-tools;34.0.0 platforms;android-34'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build web assets
         run: npm run build

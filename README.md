@@ -66,6 +66,7 @@ git push origin v1.0.0
 
 ## 版本历史
 
+- v1.0.2 - 升级到 Capacitor 7 适配 capacitor-cors-proxy
 - v1.0.1 - 修复 GitHub Actions 构建配置
 - v1.0.0 - 初始版本，从 Electron 桌面版迁移到 Capacitor 手机版
 
