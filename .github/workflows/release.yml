@@ -55,37 +55,22 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
-      - name: Configure signing
-        run: |
-          cat > android/app/signing.properties << 'EOF'
-          storeFile=release.keystore
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          EOF
-
-      - name: Add signing config to build.gradle
+      - name: Configure signing in build.gradle
         run: |
           cd android/app
-          # Read signing properties
-          STORE_FILE="release.keystore"
-          cat >> build.gradle << 'GRADLE'
-          
-          def signingProps = new Properties()
-          def signingFile = file("signing.properties")
-          if (signingFile.exists()) {
-              signingProps.load(new FileInputStream(signingFile))
-              android.signingConfigs {
-                  release {
-                      storeFile file(signingProps['storeFile'])
-                      storePassword signingProps['storePassword']
-                      keyAlias signingProps['keyAlias']
-                      keyPassword signingProps['keyPassword']
-                  }
-              }
-              android.buildTypes.release.signingConfig = android.signingConfigs.release
-          }
-          GRADLE
+          # Insert signing config inside the android {} block, before buildTypes
+          sed -i '/buildTypes {/i \
+              signingConfigs {\
+                  release {\
+                      storeFile file("release.keystore")\
+                      storePassword "${{ secrets.KEYSTORE_PASSWORD }}"\
+                      keyAlias "${{ secrets.KEY_ALIAS }}"\
+                      keyPassword "${{ secrets.KEY_PASSWORD }}"\
+                  }\
+              }' build.gradle
+
+          # Set the release build type to use our signing config
+          sed -i 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' build.gradle
 
       - name: Build Release APK
         working-directory: android
