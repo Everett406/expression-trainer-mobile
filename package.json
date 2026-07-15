@@ -1,6 +1,6 @@
 {
   "name": "expression-trainer-mobile",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "宇宙无敌表达训练系统 - 手机版",
   "type": "module",
   "scripts": {
@@ -23,8 +23,7 @@
     "@capacitor/haptics": "^7.0.0",
     "@capacitor/keyboard": "^7.0.0",
     "@capacitor/preferences": "^7.0.0",
-    "@capacitor/status-bar": "^7.0.0",
-    "capacitor-cors-proxy": "^2.0.2"
+    "@capacitor/status-bar": "^7.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",

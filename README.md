@@ -13,10 +13,11 @@
 ## 技术栈
 
 - Vite 构建工具
-- Capacitor 6 跨平台框架
+- Capacitor 7 跨平台框架
 - 阶跃 `stepaudio-2.5-asr-stream` 双向流式 ASR
 - DeepSeek / OpenAI 兼容 API 作为 AI 后端
-- capacitor-cors-proxy 解决 WebSocket 鉴权与 CORS
+- 自定义 Capacitor WebSocket 插件（OkHttp）解决 WebSocket 鉴权与 CORS
+- CapacitorHttp 解决 HTTP 请求的 CORS 限制
 
 ## 开始使用
 
@@ -42,6 +43,7 @@ npm run dev          # 启动 Vite 开发服务器
 
 ```bash
 npm run cap:sync    # 构建前端 + 同步到 Android
+bash scripts/install-plugin.sh  # 安装自定义 WebSocket 插件到 Android 项目
 npx cap open android # 在 Android Studio 中打开
 # 在 Android Studio 中 Build → Generate Signed APK
 ```
@@ -66,6 +68,7 @@ git push origin v1.0.0
 
 ## 版本历史
 
+- v1.1.0 - 使用自定义 Capacitor WebSocket 插件（OkHttp）替代 capacitor-cors-proxy
 - v1.0.5 - 修复 capacitor-cors-proxy 依赖版本不匹配问题
 - v1.0.4 - 修复 Gradle 签名配置注入方式
 - v1.0.3 - 修复 capacitor 配置（改为 JSON 格式避免 TypeScript 依赖）

@@ -1,18 +1,29 @@
 /**
- * 网络层封装 - 基于 capacitor-cors-proxy
+ * 网络层封装 - 基于自定义 Capacitor 插件 + CapacitorHttp
  *
- * 在 Capacitor 原生环境（Android / iOS）：使用 CorsProxy 发起 HTTP 请求与
- *   WebSocket 连接，绕过浏览器的 CORS 限制，并支持自定义请求头（如
- *   Authorization: Bearer xxx）。
- * 在 Web 浏览器开发环境：降级使用原生 fetch() 与 WebSocket()。
+ * 在 Capacitor 原生环境（Android / iOS）：
+ *   - HTTP 请求通过 CapacitorHttp（@capacitor/core 内置）发起，绕过 CORS 限制
+ *   - WebSocket 连接通过自定义 CustomWebSocket 插件（OkHttp WebSocket），
+ *     支持自定义请求头（如 Authorization: Bearer xxx）
+ *
+ * 在 Web 浏览器开发环境：
+ *   - HTTP 请求使用原生 fetch()
+ *   - WebSocket 使用浏览器原生 WebSocket（不支持自定义头）
  *
  * 提供两个导出：
  *   - httpRequest(options)       发起 HTTP 请求
  *   - createWebSocket(options)   创建 WebSocket 连接
  */
 
-import { Capacitor } from '@capacitor/core';
-import { CorsProxy } from 'capacitor-cors-proxy';
+import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core';
+
+/**
+ * 注册自定义 WebSocket 插件
+ * 在原生环境下，插件通过 MainActivity.registerPlugin() 注册
+ * 在 Web 环境下，返回的 proxy 在调用方法时会抛出 unimplemented 错误
+ * （但我们只在原生环境下使用它，所以不影响 Web 开发）
+ */
+const CustomWebSocket = registerPlugin('CustomWebSocket');
 
 /**
  * 判断当前是否运行在原生平台（非 Web）
@@ -41,18 +52,58 @@ export async function httpRequest(options) {
   const { url, method = 'GET', headers = {}, data } = options;
 
   if (isNativePlatform()) {
-    // 原生环境：通过 CorsProxy 发起请求，绕过 CORS
-    const response = await CorsProxy.request({
+    // 原生环境：通过 CapacitorHttp 发起请求，绕过 CORS
+    // CapacitorHttp 是 @capacitor/core 内置的，无需额外依赖
+    const requestHeaders = { ...headers };
+
+    // 准备请求体
+    let requestData;
+    if (data !== undefined && data !== null) {
+      if (typeof data === 'string') {
+        requestData = data;
+      } else {
+        requestData = JSON.stringify(data);
+        // 对象请求体默认使用 JSON，若未显式指定 Content-Type 则补上
+        const hasContentType =
+          Object.keys(requestHeaders).some(
+            (k) => k.toLowerCase() === 'content-type'
+          );
+        if (!hasContentType) {
+          requestHeaders['Content-Type'] = 'application/json';
+        }
+      }
+    }
+
+    const response = await CapacitorHttp.request({
       url,
       method,
-      headers,
-      data,
+      headers: requestHeaders,
+      data: requestData,
     });
-    const status = response.status ?? 200;
+
+    const status = response.status || 200;
+
+    // CapacitorHttp 的 data 可能是字符串或已解析的对象
+    // 统一处理：如果是字符串且 content-type 为 JSON，则解析
+    let body = response.data;
+    if (typeof body === 'string') {
+      const contentType =
+        response.headers?.['Content-Type'] ||
+        response.headers?.['content-type'] ||
+        '';
+      if (contentType.includes('application/json')) {
+        try {
+          body = JSON.parse(body);
+        } catch (e) {
+          // JSON 解析失败，保留原始字符串
+        }
+      }
+    }
+
     return {
       status,
-      statusText: response.statusText || '',
-      data: response.data,
+      statusText: '',
+      data: body,
       ok: status >= 200 && status < 300,
     };
   }
@@ -120,47 +171,58 @@ export async function createWebSocket(options) {
 }
 
 /**
- * 原生环境 WebSocket：基于 capacitor-cors-proxy
+ * 原生环境 WebSocket：基于自定义 CustomWebSocket 插件（OkHttp WebSocket）
+ *
+ * 插件通过 registerPlugin('CustomWebSocket') 获取，在 Java 层使用 OkHttp
+ * WebSocket 客户端实现，支持自定义请求头。
+ *
+ * 事件流：
+ *   - onMessage:      { message: string }           收到文本消息
+ *   - onStatusChange: { status, error? }            连接状态变化
+ *                     status: "connected" | "closed" | "error"
  */
 async function createNativeWebSocket(url, headers) {
-  const connection = await CorsProxy.createWebSocketConnection({
-    url,
-    headers,
-    timeout: 10000,
-  });
-  const connectionId = connection.connectionId;
+  // 调用原生插件建立连接，返回 connectionId
+  const result = await CustomWebSocket.connect({ url, headers });
+  const connectionId = result.connectionId;
 
   let messageCallback = null;
   let statusCallback = null;
   let closed = false;
 
-  // 监听全局消息事件，按 connectionId 过滤
-  const messageListener = await CorsProxy.addListener(
-    'webSocketMessage',
-    (event) => {
-      if (event.connectionId !== connectionId) return;
-      if (messageCallback) messageCallback(event.data);
+  // 监听消息事件
+  const messageListener = await CustomWebSocket.addListener(
+    'onMessage',
+    (data) => {
+      if (closed) return;
+      // 插件返回 { message: string }
+      if (messageCallback) messageCallback(data.message);
     }
   );
 
-  // 监听全局连接状态事件，按 connectionId 过滤
-  const statusListener = await CorsProxy.addListener(
-    'webSocketConnectionChange',
-    (event) => {
-      if (event.connectionId !== connectionId) return;
-      if (statusCallback) statusCallback(event.status, event.error);
+  // 监听连接状态事件
+  const statusListener = await CustomWebSocket.addListener(
+    'onStatusChange',
+    (data) => {
+      if (closed) return;
+      // 插件返回 { status: "connected"|"closed"|"error", error?: string }
+      if (statusCallback) {
+        const status = data.status;
+        const error = data.error || null;
+        statusCallback(status, error);
+      }
     }
   );
 
   return {
     async send(message) {
-      await CorsProxy.sendWebSocketMessage({ connectionId, message });
+      await CustomWebSocket.send({ message });
     },
     async close() {
       if (closed) return;
       closed = true;
       try {
-        await CorsProxy.closeWebSocketConnection({ connectionId });
+        await CustomWebSocket.close();
       } finally {
         if (messageListener && typeof messageListener.remove === 'function') {
           messageListener.remove();

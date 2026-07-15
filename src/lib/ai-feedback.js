@@ -3,7 +3,7 @@
  * 支持 DeepSeek / OpenAI / Ollama / 自定义 OpenAI 兼容接口
  *
  * ES module 版本：通过 ./network.js 的 httpRequest 发起请求，
- * 绕过 Capacito 原生环境下的 CORS 限制。
+ * 绕过 Capacitor 原生环境下的 CORS 限制（CapacitorHttp + 自定义 WebSocket 插件）。
  */
 
 import { getRealtimePrompt, getReportPrompt } from './prompts.js';
@@ -17,7 +17,7 @@ const PROVIDER_ENDPOINTS = {
 
 /**
  * 发送请求到 OpenAI 兼容接口
- * 使用 ./network.js 的 httpRequest 统一处理网络层（原生环境走 CorsProxy）
+ * 使用 ./network.js 的 httpRequest 统一处理网络层（原生环境走 CapacitorHttp）
  */
 async function callAPI(endpoint, apiKey, model, messages, maxTokens = 200) {
   const response = await httpRequest({
