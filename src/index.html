@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>表达训练</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <span class="app-title">表达训练</span>
+    <div class="topbar-right">
+      <span id="timer" class="timer">00:00</span>
+      <button id="btn-settings" class="btn-icon" title="设置">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Tab 内容区 -->
+  <div id="tab-content" class="tab-content">
+    <!-- Tab 1: 字幕 -->
+    <div id="tab-subtitle" class="tab-pane active">
+      <div id="subtitle-scroll" class="subtitle-scroll">
+        <div id="subtitle-container" class="subtitle-container">
+          <div class="subtitle-line hint">点击下方按钮开始说话</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: 统计 -->
+    <div id="tab-stats" class="tab-pane">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">笼统词</div>
+          <div id="stat-vague" class="stat-value stat-red">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">填充词</div>
+          <div id="stat-fillers" class="stat-value stat-orange">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">犹豫词</div>
+          <div id="stat-hedges" class="stat-value stat-yellow">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">表达密度</div>
+          <div id="stat-density" class="stat-value stat-green">--</div>
+        </div>
+      </div>
+      <div id="stat-details" class="stat-details">
+        <div class="stat-detail-hint">录制后会显示详细统计</div>
+      </div>
+      <button id="btn-report" class="btn-report hidden">📋 生成报告</button>
+    </div>
+
+    <!-- Tab 3: 反馈 -->
+    <div id="tab-feedback" class="tab-pane">
+      <div id="feedback-content" class="feedback-content">
+        <div class="feedback-hint">录制时这里会实时显示反馈</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部操作区 -->
+  <div class="bottom-bar">
+    <button id="btn-start" class="btn-record btn-start">
+      <span class="btn-icon-inner">🎤</span>
+      <span class="btn-label">开始录制</span>
+    </button>
+    <button id="btn-pause" class="btn-record btn-pause hidden">
+      <span class="btn-icon-inner">⏸️</span>
+      <span class="btn-label">暂停</span>
+    </button>
+    <button id="btn-resume" class="btn-record btn-resume hidden">
+      <span class="btn-icon-inner">▶️</span>
+      <span class="btn-label">继续</span>
+    </button>
+    <button id="btn-stop" class="btn-record btn-stop hidden">
+      <span class="btn-icon-inner">⏹️</span>
+      <span class="btn-label">结束</span>
+    </button>
+  </div>
+
+  <!-- 底部 Tab 栏 -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="subtitle">
+      <span class="tab-icon">📝</span>
+      <span class="tab-label">字幕</span>
+    </button>
+    <button class="tab-btn" data-tab="stats">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">统计</span>
+    </button>
+    <button class="tab-btn" data-tab="feedback">
+      <span class="tab-icon">💡</span>
+      <span class="tab-label">反馈</span>
+    </button>
+  </div>
+
+  <!-- 粘贴逐字稿弹窗 -->
+  <div id="paste-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📋 粘贴逐字稿</h2>
+        <button id="btn-close-paste" class="btn-close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">把逐字稿粘贴进来，我帮你分析</p>
+        <textarea id="paste-textarea" placeholder="在这里粘贴文字..."></textarea>
+        <button id="btn-analyze-paste" class="btn-primary">🔍 开始分析</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 报告弹窗 -->
+  <div id="report-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>📋 表达分析报告</h2>
+        <div class="modal-header-actions">
+          <button id="btn-copy-report" class="btn-sm">📋 复制</button>
+          <button id="btn-save-report" class="btn-sm">💾 保存</button>
+          <button id="btn-close-report" class="btn-close">×</button>
+        </div>
+      </div>
+      <div id="report-body" class="modal-body report-body"></div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ 设置</h2>
+        <button id="btn-close-settings" class="btn-close">×</button>
+      </div>
+      <div class="modal-body settings-body">
+        <div class="form-group">
+          <label>阶跃 ASR API Key</label>
+          <input type="password" id="asr-apikey" placeholder="输入阶跃 API Key">
+          <div class="hint">在 platform.stepfun.com 获取</div>
+        </div>
+        <div class="form-group">
+          <label>AI 后端</label>
+          <select id="ai-provider">
+            <option value="deepseek">DeepSeek（推荐）</option>
+            <option value="custom">自定义 OpenAI 兼容</option>
+          </select>
+        </div>
+        <div class="form-group" id="group-apikey">
+          <label>AI API Key</label>
+          <input type="password" id="ai-apikey" placeholder="输入 AI API Key">
+        </div>
+        <div class="form-group">
+          <label>AI 模型</label>
+          <input type="text" id="ai-model" placeholder="deepseek-chat" value="deepseek-chat">
+        </div>
+        <div class="form-group hidden" id="group-custom-endpoint">
+          <label>自定义 Endpoint</label>
+          <input type="text" id="custom-endpoint" placeholder="https://api.example.com/v1">
+        </div>
+        <button id="btn-save-settings" class="btn-primary">保存设置</button>
+        <div id="save-settings-success" class="save-success">✓ 已保存</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 训练规则编辑弹窗 -->
+  <div id="prompt-editor-modal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>🎯 训练规则定制</h2>
+        <button id="btn-close-prompt-editor" class="btn-close">×</button>
+      </div>
+      <div class="modal-body prompt-editor-body">
+        <p class="modal-hint">底层词库和基础反馈规则始终生效。你可以在上面叠加个人化的训练目标和规则。</p>
+
+        <div class="form-group">
+          <label>我的训练目标</label>
+          <textarea id="prompt-goals" placeholder="比如：我想减少说「然后」的频率"></textarea>
+        </div>
+        <div class="form-group">
+          <label>自定义触发规则</label>
+          <textarea id="prompt-custom-rules" placeholder="格式：触发条件 → 输出提示"></textarea>
+        </div>
+        <div class="form-group">
+          <label>我想要的表达风格</label>
+          <textarea id="prompt-style-ref" placeholder="描述你理想中的说话方式"></textarea>
+        </div>
+        <div class="form-group">
+          <label>我的口癖补充</label>
+          <textarea id="prompt-custom-words" placeholder="你的特有口癖/高频词"></textarea>
+        </div>
+        <button id="btn-save-prompt" class="btn-primary">保存规则</button>
+        <button id="btn-reset-prompt" class="btn-secondary">恢复默认</button>
+        <div id="save-prompt-success" class="save-success">✓ 已保存</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 顶部工具按钮 -->
+  <div class="floating-tools">
+    <button id="btn-paste" class="btn-floating" title="粘贴逐字稿">📋</button>
+    <button id="btn-prompt-editor" class="btn-floating" title="训练规则">🎯</button>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
